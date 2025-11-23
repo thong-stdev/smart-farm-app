@@ -201,9 +201,13 @@ async function main() {
     // Create standard plan for Chinese Cabbage
     const cabbagePlan = await prisma.standardPlan.create({
         data: {
-            cropVarietyId: chineseCabbage.id,
             name: 'Standard Chinese Cabbage Plan',
             description: 'Quick-growing vegetable plan',
+            varieties: {
+                create: {
+                    cropVarietyId: chineseCabbage.id,
+                },
+            },
             tasks: {
                 create: [
                     {
