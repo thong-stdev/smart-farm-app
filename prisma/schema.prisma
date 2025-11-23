@@ -1,0 +1,299 @@
+// This is your Prisma schema file for Smart Farm Management Platform
+// Learn more: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// AUTHENTICATION & USER MANAGEMENT
+// ============================================
+
+enum UserRole {
+  FARMER
+  ADMIN
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  username      String?   @unique
+  password      String?   // Hashed password for credentials login
+  role          UserRole  @default(FARMER)
+  
+  // Relations
+  accounts      Account[]
+  sessions      Session[]
+  plots         Plot[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([username])
+}
+
+// For Auth.js v5 OAuth providers
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ============================================
+// PLOT & LAND MANAGEMENT
+// ============================================
+
+model Plot {
+  id          String   @id @default(cuid())
+  name        String
+  
+  // Land Size (Thai units)
+  sizeRai     Float?   // 1 Rai = 1,600 sq meters
+  sizeNgan    Float?   // 1 Ngan = 400 sq meters
+  sizeWa      Float?   // 1 Wa = 4 sq meters
+  
+  // GPS Location
+  latitude    Float
+  longitude   Float
+  
+  // Address
+  address     String?  @db.Text
+  
+  // Ownership
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Relations
+  plantingCycles PlantingCycle[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([latitude, longitude])
+}
+
+// ============================================
+// PLANTING CYCLE MANAGEMENT
+// ============================================
+
+enum CycleStatus {
+  ACTIVE      // Currently growing
+  COMPLETED   // Harvested successfully
+  ABANDONED   // Stopped mid-cycle
+}
+
+model PlantingCycle {
+  id          String       @id @default(cuid())
+  
+  // Cycle Info
+  startDate   DateTime
+  endDate     DateTime?
+  status      CycleStatus  @default(ACTIVE)
+  
+  // Crop Selection
+  cropVarietyId String
+  cropVariety   CropVariety @relation(fields: [cropVarietyId], references: [id], onDelete: Restrict)
+  
+  // Plot Reference
+  plotId      String
+  plot        Plot         @relation(fields: [plotId], references: [id], onDelete: Cascade)
+  
+  // Standard Plan (optional template used)
+  standardPlanId String?
+  standardPlan   StandardPlan? @relation(fields: [standardPlanId], references: [id], onDelete: SetNull)
+  
+  // Relations
+  activities  Activity[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([plotId, status])
+  @@index([cropVarietyId])
+  @@index([startDate])
+}
+
+// ============================================
+// ACTIVITY LOG (WITHIN A CYCLE)
+// ============================================
+
+enum ActivityType {
+  SOIL_PREPARATION
+  PLANTING
+  FERTILIZING
+  PEST_CONTROL
+  IRRIGATION
+  WEEDING
+  HARVESTING
+  OTHER
+}
+
+model Activity {
+  id          String       @id @default(cuid())
+  
+  // Activity Details
+  type        ActivityType
+  description String       @db.Text
+  activityDate DateTime    @default(now())
+  
+  // Financial Tracking
+  cost        Float        @default(0) // Expenses
+  income      Float        @default(0) // Revenue (mainly for harvest)
+  
+  // Images
+  images      String[]     // Array of image URLs
+  
+  // Cycle Reference
+  cycleId     String
+  cycle       PlantingCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([cycleId])
+  @@index([activityDate])
+}
+
+// ============================================
+// MASTER DATA - CROP MANAGEMENT
+// ============================================
+
+model CropType {
+  id          String   @id @default(cuid())
+  name        String   @unique // e.g., "Rice", "Vegetables", "Fruits"
+  nameEn      String?  // English name
+  nameTh      String?  // Thai name
+  description String?  @db.Text
+  icon        String?  // Emoji or icon identifier
+  
+  // Relations
+  varieties   CropVariety[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model CropVariety {
+  id          String   @id @default(cuid())
+  name        String   // e.g., "Jasmine 105", "Hom Mali"
+  nameEn      String?
+  nameTh      String?
+  description String?  @db.Text
+  
+  // Growth Period (days)
+  growthPeriodDays Int? // Estimated days from planting to harvest
+  
+  // Crop Type Reference
+  cropTypeId  String
+  cropType    CropType @relation(fields: [cropTypeId], references: [id], onDelete: Cascade)
+  
+  // Relations
+  plantingCycles PlantingCycle[]
+  planVarieties  PlanVariety[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([cropTypeId, name])
+  @@index([cropTypeId])
+}
+
+// ============================================
+// STANDARD PLANTING PLAN TEMPLATES
+// ============================================
+
+model StandardPlan {
+  id          String   @id @default(cuid())
+  name        String
+  description String?  @db.Text
+  
+  // Relations
+  tasks       PlanTask[]
+  varieties   PlanVariety[]
+  plantingCycles PlantingCycle[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Join table for Many-to-Many relationship
+model PlanVariety {
+  id             String       @id @default(cuid())
+  
+  standardPlanId String
+  standardPlan   StandardPlan @relation(fields: [standardPlanId], references: [id], onDelete: Cascade)
+  
+  cropVarietyId  String
+  cropVariety    CropVariety  @relation(fields: [cropVarietyId], references: [id], onDelete: Cascade)
+  
+  createdAt      DateTime     @default(now())
+  
+  @@unique([standardPlanId, cropVarietyId])
+  @@index([standardPlanId])
+  @@index([cropVarietyId])
+}
+
+model PlanTask {
+  id          String   @id @default(cuid())
+  
+  // Task Details
+  title       String
+  description String?  @db.Text
+  
+  // Timing
+  dayFromStart Int     // Days after planting start (e.g., Day 0, Day 7, Day 30)
+  
+  // Activity Type Suggestion
+  activityType ActivityType @default(OTHER)
+  
+  // Standard Plan Reference
+  standardPlanId String
+  standardPlan   StandardPlan @relation(fields: [standardPlanId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([standardPlanId])
+}
