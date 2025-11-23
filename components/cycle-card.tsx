@@ -24,7 +24,7 @@ export default function CycleCard({
         activityCount: number
     } | null
 }) {
-    const daysElapsed = daysBetween(cycle.startDate)
+    const daysElapsed = daysBetween(cycle.startDate, new Date())
     const growthProgress = cycle.cropVariety.growthPeriodDays
         ? (daysElapsed / cycle.cropVariety.growthPeriodDays) * 100
         : 0
