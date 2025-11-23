@@ -135,9 +135,13 @@ async function main() {
     // Create standard plan for Jasmine 105
     const jasminePlan = await prisma.standardPlan.create({
         data: {
-            cropVarietyId: jasmine105.id,
             name: 'Standard Jasmine Rice Plan',
             description: 'Standard planting plan for Jasmine 105 rice',
+            varieties: {
+                create: {
+                    cropVarietyId: jasmine105.id,
+                },
+            },
             tasks: {
                 create: [
                     {
