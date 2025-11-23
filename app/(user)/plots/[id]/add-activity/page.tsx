@@ -7,9 +7,10 @@ import { ArrowLeft } from "lucide-react"
 export default async function AddActivityPage({
     params,
 }: {
-    params: { id: string }
+    params: Promise<{ id: string }>
 }) {
-    const plot = await getPlotWithActiveCycle(params.id)
+    const { id } = await params
+    const plot = await getPlotWithActiveCycle(id)
 
     if (!plot) {
         notFound()
@@ -26,7 +27,7 @@ export default async function AddActivityPage({
                         กรุณาเริ่มรอบการปลูกใหม่ก่อนบันทึกกิจกรรม
                     </p>
                     <Link
-                        href={`/plots/${params.id}`}
+                        href={`/plots/${id}`}
                         className="text-primary hover:underline"
                     >
                         กลับไปหน้าแปลง
@@ -39,14 +40,14 @@ export default async function AddActivityPage({
     return (
         <div className="container mx-auto px-4 py-6 max-w-2xl">
             <Link
-                href={`/plots/${params.id}`}
+                href={`/plots/${id}`}
                 className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6"
             >
                 <ArrowLeft className="w-4 h-4" />
                 กลับไปหน้าแปลง {plot.name}
             </Link>
 
-            <ActivityForm cycleId={activeCycle.id} plotId={params.id} />
+            <ActivityForm cycleId={activeCycle.id} plotId={id} />
         </div>
     )
 }

@@ -11,9 +11,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 export default async function PlotDetailPage({
     params,
 }: {
-    params: { id: string }
+    params: Promise<{ id: string }>
 }) {
-    const plot = await getPlotWithActiveCycle(params.id)
+    const { id } = await params
+    const plot = await getPlotWithActiveCycle(id)
 
     if (!plot) {
         notFound()

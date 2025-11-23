@@ -49,14 +49,15 @@ function calculateCycleStats(cycle: any) {
 export default async function PlotHistoryPage({
     params,
 }: {
-    params: { id: string }
+    params: Promise<{ id: string }>
 }) {
+    const { id } = await params
     const session = await auth()
     if (!session?.user?.id) {
         notFound()
     }
 
-    const plot = await getPlotHistory(params.id, session.user.id)
+    const plot = await getPlotHistory(id, session.user.id)
 
     if (!plot) {
         notFound()
